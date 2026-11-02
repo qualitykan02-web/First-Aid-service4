@@ -1,0 +1,32 @@
+// วางไฟล์นี้ใน Google Apps Script (Extensions > Apps Script ของ Google Sheet)
+var SHEET = 'บันทึก';
+var HEAD = ['รหัส','วันที่','กิจกรรม','เวลา','สถานที่','แพทย์','พยาบาล','ผู้ช่วยเหลือคนไข้','จนท.มูลนิธิ','พขร.','สถานะ','จำนวนผู้ป่วย','อาการ','อาการอื่นๆ','การปฐมพยาบาล','ปฐมพยาบาลอื่นๆ','ปัญหา/อุปสรรค','รูปภาพ','หมายเหตุ','บันทึกเมื่อ'];
+
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile('index')
+    .setTitle('บันทึกหน่วยปฐมพยาบาล จ.กาญจนบุรี')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+function sh_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var s = ss.getSheetByName(SHEET) || ss.insertSheet(SHEET);
+  if (s.getLastRow() === 0) { s.appendRow(HEAD); s.setFrozenRows(1); }
+  return s;
+}
+function saveRecord(r) {
+  var s = sh_(), id = Utilities.getUuid().slice(0, 8);
+  s.appendRow([id, r.date, r.act, r.time, r.place].concat(r.staff, [r.status, r.n,
+    r.sym.join(', '), r.symo, r.aid.join(', '), r.aido, r.prob, r.photos.join('\n'), r.note, new Date()]));
+  return id;
+}
+function uploadPhoto(b64, name, mime) {
+  var it = DriveApp.getFoldersByName('รูปหน่วยปฐมพยาบาล กาญจนบุรี');
+  var f = it.hasNext() ? it.next() : DriveApp.createFolder('รูปหน่วยปฐมพยาบาล กาญจนบุรี');
+  var file = f.createFile(Utilities.newBlob(Utilities.base64Decode(b64), mime, name));
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return file.getId();
+}
+function getRecords() {
+  var v = sh_().getDataRange().getDisplayValues();
+  return v.slice(1).reverse().slice(0, 300);
+}
